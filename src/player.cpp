@@ -83,6 +83,7 @@ static bool player_read32(on_read_stream_callback on_read_stream, void* on_read_
     *out = res;
     return true;
 }
+/*
 static bool player_read24(on_read_stream_callback on_read_stream, void* on_read_stream_state,uint32_t* out) {
     uint32_t res = 0;
     int v = on_read_stream(on_read_stream_state);
@@ -106,6 +107,7 @@ static bool player_read24(on_read_stream_callback on_read_stream, void* on_read_
     *out = res;
     return true;
 }
+*/
 static bool player_read16(on_read_stream_callback on_read_stream, void* on_read_stream_state,uint16_t* out) {
     uint16_t res = 0;
     int v = on_read_stream(on_read_stream_state);
@@ -324,7 +326,6 @@ static void wav_voice_16_1_to_16_2(const voice_func_info_t& info, void*state) {
     uint16_t* dst = (uint16_t*)info.buffer;
     for(int i = 0;i<info.frame_count;++i) {
         int16_t i16;
-        
         if(wi->pos>=wi->length) {
             if(!wi->loop) {
                 break;
@@ -337,10 +338,8 @@ static void wav_voice_16_1_to_16_2(const voice_func_info_t& info, void*state) {
         } else {
             break;
         }
+        uint16_t u16 = (uint16_t)((i16+32768U)*wi->amplitude);
         for(int j=0;j<info.channels;++j) {
-            uint16_t u16 = (uint16_t)((i16+32768U)*wi->amplitude);
-            *dst+=u16;
-            ++dst;
             *dst+=u16;
             ++dst;
         }
@@ -518,7 +517,8 @@ bool player::initialize() {
         return false;
     }
     TaskHandle_t th=nullptr;
-    xTaskCreate(task,"player_task",1024,this,configMAX_PRIORITIES-1,&th);
+    int affinity = xTaskGetAffinity(xTaskGetCurrentTaskHandle());
+    xTaskCreatePinnedToCore(task,"player_task",1024,this,configMAX_PRIORITIES-1,&th,1-affinity);
     if(th==nullptr) {
         free(m_buffer);
         m_buffer = nullptr;
@@ -601,7 +601,7 @@ voice_handle_t player::wav(on_read_stream_callback on_read_stream, void* on_read
     uint32_t size;
     uint32_t remaining;
     uint32_t pos;
-    uint32_t fmt_len;
+    //uint32_t fmt_len;
     int v = on_read_stream(on_read_stream_state);
     if(v!='R') { 
         return nullptr;
@@ -645,7 +645,6 @@ voice_handle_t player::wav(on_read_stream_callback on_read_stream, void* on_read
     pos+=4;
     remaining-=4;
     char buf[4];
-    uint16_t t16;
     while(remaining) {
         if(!player_read_fourcc(on_read_stream,on_read_stream_state,buf)) {
             return nullptr;
@@ -658,7 +657,6 @@ voice_handle_t player::wav(on_read_stream_callback on_read_stream, void* on_read
         pos+=4;
         remaining-=4;
         if(0==memcmp("fmt ",buf,4)) {
-            fmt_len = t32;
             uint16_t t16;
             if(!player_read16(on_read_stream,on_read_stream_state,&t16)) {
                 return nullptr;
@@ -681,6 +679,9 @@ voice_handle_t player::wav(on_read_stream_callback on_read_stream, void* on_read
                 return nullptr;
             }
             sample_rate = t32;
+            if(sample_rate!=this->sample_rate()) {
+                return nullptr;
+            }
             pos+=4;
             remaining-=4;
             if(!player_read32(on_read_stream,on_read_stream_state,&t32)) {

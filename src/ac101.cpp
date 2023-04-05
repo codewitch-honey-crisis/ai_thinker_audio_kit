@@ -317,7 +317,6 @@ void ac101::format(ac101_format value) {
 }
 void ac101::mixer_source(ac101_mixer_source source, ac101_mixer_gain gain) {
     uint16_t regval, temp, clrbit;
-    esp_err_t ret;
     regval = read_reg(m_i2c, OMIXER_BST1_CTRL);
     switch (source) {
         case ac101_mixer_source::mic1:

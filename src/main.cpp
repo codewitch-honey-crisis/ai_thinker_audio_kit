@@ -10,7 +10,7 @@
 #include <ac101.hpp>
 #include <driver/i2s.h>
 #include <player.hpp>
-#include <demo.hpp>
+#include <test.hpp>
 #ifdef ARDUINO
 using namespace arduino;
 #else
@@ -22,16 +22,16 @@ ac101 audio;
 player sound;
 uint16_t i2s_out_buf[128];
 
-size_t demo_len = sizeof(demo_data);
-size_t demo_pos = 0;
+size_t test_len = sizeof(test_data);
+size_t test_pos = 0;
 int read_demo(void* state) {
-    if(demo_pos>=demo_len) {
+    if(test_pos>=test_len) {
         return -1;
     }
-    return demo_data[demo_pos++];
+    return test_data[test_pos++];
 }
 void seek_demo(unsigned long long position, void* state) {
-    demo_pos = position;
+    test_pos = position;
 }
 #ifdef ARDUINO
 void setup() {
@@ -94,8 +94,8 @@ extern "C" void app_main() {
     sound.on_sound_disable([](void* state) {
         i2s_zero_dma_buffer(I2S_NUM_1);
     });
-   voice_handle_t v1= sound.sin(120,.1);
-    voice_handle_t v3=sound.wav(read_demo,nullptr,.5,true,seek_demo,nullptr);
+  // voice_handle_t v1= sound.sin(120,.1);
+    voice_handle_t v3=sound.wav(read_demo,nullptr,.75,true,seek_demo,nullptr);
    //voice_handle_t v2=sound.sqr(1000,.05);
    
     
